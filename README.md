@@ -1,1 +1,337 @@
 # chocolaterie-Lionnel-Carpin
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Chocolaterie du Lionel Carpin — Description des chocolats</title>
+  <meta name="description" content="Catalogue QR — ganaches et pralinés — filtres lait/noir — recherche tolérante — fiche produit en fenêtre" />
+  <style>
+    :root{--bg:#0b0b0d;--panel:#121217;--ink:#eaeaf0;--muted:#a7a7b3;--brand:#d4af37;--border:#1d1d24;--card:#0f0f14}
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,'Helvetica Neue',Arial,'Noto Sans',sans-serif}
+    a{color:inherit}
+    .wrap{max-width:980px;margin:0 auto;padding:12px}
+    header{display:block;margin:6px 0 8px}
+    h1{margin:0 0 2px 0;font-size:18px;font-weight:800;letter-spacing:.2px}
+    h2{margin:0;color:var(--muted);font-size:13px;font-weight:600}
+    .meta{margin-top:8px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    .pill{border:1px solid var(--border);background:var(--card);padding:6px 10px;border-radius:999px;font-size:12px}
+
+    /* Controls */
+    .controls{margin:10px 0 12px;display:grid;grid-template-columns:1fr;gap:8px}
+    .search{position:relative;display:flex;align-items:center;gap:8px;background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:8px 10px}
+    .search input{all:unset;flex:1;min-width:120px}
+    .suggest{position:absolute;left:0;right:0;top:100%;margin-top:4px;background:var(--panel);border:1px solid var(--border);border-radius:10px;max-height:260px;overflow:auto;display:none;z-index:5}
+    .suggest[aria-hidden="false"]{display:block}
+    .suggest button{all:unset;display:block;width:100%;padding:8px 10px;cursor:pointer}
+    .suggest button:hover,.suggest button[aria-selected="true"]{background:rgba(212,175,55,.12)}
+
+    .filter-row{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+    .chip{border:1px solid var(--border);background:var(--panel);padding:6px 10px;border-radius:999px;font-size:12px;cursor:pointer}
+    .chip[aria-pressed="true"]{border-color:rgba(212,175,55,.6);box-shadow:inset 0 0 0 1px rgba(212,175,55,.35)}
+
+    /* Gallery grid: 2 cols phone, 4 cols desktop */
+    .grid{margin-top:12px;display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+    .card{position:relative;background:var(--panel);border:1px solid var(--border);border-radius:12px;aspect-ratio:1/1;overflow:hidden;cursor:pointer}
+    .card img{width:100%;height:100%;object-fit:cover;display:block}
+    .card .label{position:absolute;left:6px;bottom:6px;background:rgba(0,0,0,.55);backdrop-filter:saturate(120%) blur(2px);color:#fff;padding:4px 7px;border-radius:8px;font-size:12px}
+    .card:focus{outline:3px solid var(--brand);outline-offset:2px}
+
+    @media (min-width:721px){
+      .grid{grid-template-columns:repeat(4,1fr)}
+    }
+
+    .hint{font-size:12px;color:var(--muted)}
+
+    /* Modal overlay */
+    .modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.6);backdrop-filter:blur(2px);z-index:50}
+    .modal[open]{display:flex}
+    .sheet{width:min(960px,96vw);height:min(88vh,960px);background:var(--panel);border:1px solid var(--border);border-radius:14px;overflow:hidden;display:flex;flex-direction:column}
+    .sheet-header{position:sticky;top:0;z-index:2;background:linear-gradient(180deg,rgba(11,11,13,.98),rgba(11,11,13,.85));border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;padding:10px 12px}
+    .sheet-title{font-weight:800;font-size:15px;line-height:1.2;flex:1}
+    .btn-x{border:1px solid var(--border);background:var(--card);color:var(--ink);border-radius:10px;cursor:pointer;width:36px;height:32px;display:grid;place-items:center;font-size:18px}
+    .btn-x:focus{outline:2px solid var(--brand);outline-offset:2px}
+
+    .sheet-body{display:grid;grid-template-columns:1fr 1fr;gap:0;min-height:0;flex:1}
+    .sheet-photo{border-right:1px solid var(--border);background:#000}
+    .sheet-photo img{width:100%;height:100%;object-fit:cover;display:block}
+    .sheet-desc{overflow:auto;padding:12px}
+    .sheet-desc p,.sheet-desc li{color:var(--ink)}
+    .sheet-desc small{color:var(--muted)}
+
+    @media (max-width:420px){
+      .sheet-body{grid-template-columns:1fr 1fr}
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>Chocolaterie du Lionel Carpin</h1>
+      <h2>Description des chocolats</h2>
+      <div class="meta"><span class="pill" id="countPill">0 produit</span></div>
+    </header>
+
+    <div class="controls" role="search">
+      <label class="search" aria-label="Rechercher par nom, lait/noir">
+        <input id="q" type="search" placeholder="Rechercher un chocolat, ex : praliné feuilletine, lait, noir…" autocomplete="off" />
+        <div class="suggest" id="suggest" aria-hidden="true" role="listbox"></div>
+      </label>
+      <div class="filter-row" role="group" aria-label="Famille">
+        <strong style="font-size:12px;color:var(--muted)">Famille :</strong>
+        <button class="chip chip-family" aria-pressed="true" data-family="all">Tous</button>
+        <button class="chip chip-family" aria-pressed="false" data-family="ganache">Ganache</button>
+        <button class="chip chip-family" aria-pressed="false" data-family="praline">Praliné</button>
+      </div>
+      <div class="filter-row" role="group" aria-label="Type de chocolat">
+        <strong style="font-size:12px;color:var(--muted)">Type :</strong>
+        <button class="chip chip-type" aria-pressed="true" data-type="all">Tous</button>
+        <button class="chip chip-type" aria-pressed="false" data-type="lait">Lait</button>
+        <button class="chip chip-type" aria-pressed="false" data-type="noir">Noir</button>
+      </div>
+    </div>
+
+    <section class="grid" id="gallery" aria-label="Galerie de produits"></section>
+
+    <p class="hint">Astuce : tapez quelques lettres. Suggestions en direct. Ordre des mots et petites fautes tolérés.</p>
+  </div>
+
+  <!-- Modal fiche produit -->
+  <div class="modal" id="modal">
+    <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+      <div class="sheet-header">
+        <div class="sheet-title" id="sheetTitle"></div>
+        <button class="btn-x" id="btnClose" aria-label="Fermer">×</button>
+      </div>
+      <div class="sheet-body">
+        <figure class="sheet-photo"><img id="sheetImg" src="" alt="Photo produit" /></figure>
+        <div class="sheet-desc" id="sheetDesc"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // === Données réelles issues du tarif. Un produit par variante (lait/noir séparés) ===
+    const RAW = {
+      noir: [
+        'Praliné surfin',
+        'Croquant caramel fleur de sel',
+        'Feuilletine praliné',
+        'Nougatin (praliné nougatine)',
+        'Spéculoos',
+        'Ganache pistache',
+        'Ganache citron',
+        'Ganache coco',
+        'Ganache framboise',
+        "Pâte d’amande",
+        "Palet d’or (arôme café)",
+        'Le Dakar (chocolat fort en cacao)',
+        'Costa Rica (ganache noire)',
+        'Grué (ganache/éclats fèves de cacao)',
+        'Noir intense (ganache 73%)'
+      ],
+      lait: [
+        'Praliné surfin',
+        'Croquant caramel fleur de sel',
+        'Feuilletine praliné',
+        'Nougatin',
+        'Spéculoos',
+        'Ganache miel',
+        'Ganache abricot',
+        'Ganache caramel',
+        'Noisettes (praliné noisettes hachées)',
+        'Crousti choc (praliné + billes de céréales)'
+      ]
+    };
+
+    // Normalisation et tokenisation
+    const norm = s => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+    const tokens = s => norm(s).split(/[^a-z0-9]+/).filter(Boolean);
+
+    // Levenshtein complet (liste courte, performance OK)
+    function lev(a,b){
+      const m=a.length,n=b.length; if(!m) return n; if(!n) return m;
+      const d=Array.from({length:m+1},(_,i)=>Array(n+1).fill(0));
+      for(let i=0;i<=m;i++) d[i][0]=i; for(let j=0;j<=n;j++) d[0][j]=j;
+      for(let i=1;i<=m;i++){
+        for(let j=1;j<=n;j++){
+          const cost=a[i-1]===b[j-1]?0:1;
+          d[i][j]=Math.min(d[i-1][j]+1,d[i][j-1]+1,d[i-1][j-1]+cost);
+        }
+      }
+      return d[m][n];
+    }
+
+    // Score de correspondance tolérant fautes et ordre libre
+    function matchScore(title, query){
+      const tt = tokens(title);
+      const qt = tokens(query);
+      if(!qt.length) return {ok:true, score:0};
+      let score = 0;
+      for(const q of qt){
+        let best = Infinity, bonus = 0;
+        for(const t of tt){
+          if(t.startsWith(q)) { best = 0; bonus = Math.max(bonus,2); break; }
+          if(t.includes(q))  { best = Math.min(best,0); bonus = Math.max(bonus,1); }
+          const d = lev(t,q);
+          if(d < best) best = d;
+        }
+        if(best<=1){ score += (2-best) + bonus; } else { return {ok:false, score:0}; }
+      }
+      return {ok:true, score};
+    }
+
+    // Construire les produits
+    const slug = s => norm(s).replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'');
+    function buildProducts(){
+      const items=[]; let id=1;
+      for(const type of ['noir','lait']){
+        for(const title of RAW[type]){
+          const family = title.toLowerCase().includes('ganache') ? 'ganache' : 'praline';
+          const s = slug(`${type}-${title}`);
+          items.push({
+            id:id++, title: `${title} — ${type}`, family, type,
+            image:`images/${s}.jpg`,
+            desc:`<p><span class=\"badge\">${type}</span><span class=\"badge\">${family}</span></p>
+                  <p>Description à compléter : % cacao, texture, notes aromatiques.</p>
+                  <ul>
+                    <li>Poids : 10–15 g/pièce ou au choix</li>
+                    <li>Ingrédients détaillés</li>
+                    <li>Allergènes : fruits à coque, lait (si applicable)</li>
+                    <li>Conservation : 16–18 °C</li>
+                  </ul>
+                  <p class=\"hint\"><small>Artisanal • Sans huile de palme</small></p>`
+          });
+        }
+      }
+      return items;
+    }
+
+    const PRODUCTS = buildProducts();
+
+    // DOM refs
+    const $gallery = document.getElementById('gallery');
+    const $q = document.getElementById('q');
+    const $count = document.getElementById('countPill');
+    const $chipsFamily = Array.from(document.querySelectorAll('.chip-family'));
+    const $chipsType = Array.from(document.querySelectorAll('.chip-type'));
+
+    const $modal = document.getElementById('modal');
+    const $sheetTitle = document.getElementById('sheetTitle');
+    const $sheetImg = document.getElementById('sheetImg');
+    const $sheetDesc = document.getElementById('sheetDesc');
+    const $btnClose = document.getElementById('btnClose');
+    const $suggest = document.getElementById('suggest');
+
+    let state = { family:'all', type:'all', query:'' };
+
+    // Toggle helper for chip groups (click again to unselect → 'all')
+    function wireChipGroup(chips, stateKey){
+      chips.forEach(ch=>{
+        ch.addEventListener('click', ()=>{
+          const isPressed = ch.getAttribute('aria-pressed') === 'true';
+          if(isPressed){
+            // Deselect → 'all'
+            chips.forEach(x=>x.setAttribute('aria-pressed','false'));
+            const allBtn = chips.find(x=>x.dataset[stateKey] === 'all');
+            if(allBtn){ allBtn.setAttribute('aria-pressed','true'); }
+            state[stateKey] = 'all';
+          } else {
+            // Select this
+            chips.forEach(x=>x.setAttribute('aria-pressed','false'));
+            ch.setAttribute('aria-pressed','true');
+            state[stateKey] = ch.dataset[stateKey];
+          }
+          applyFilters();
+        });
+      });
+    }
+
+    // Bind toggle for family/type groups
+    wireChipGroup($chipsFamily, 'family');
+    wireChipGroup($chipsType, 'type');
+
+    function renderGallery(list){
+      $gallery.innerHTML = list.map(p=>`
+        <button class="card" data-id="${p.id}" aria-label="Ouvrir ${p.title}">
+          <img src="${p.image}" alt="${p.title}" loading="lazy" />
+          <span class="label">${p.title}</span>
+        </button>`).join('');
+      Array.from($gallery.querySelectorAll('.card')).forEach(el=>{
+        el.setAttribute('tabindex','0');
+        el.addEventListener('keydown', (e)=>{
+          if(e.key==='Enter' || e.key===' '){ e.preventDefault(); el.click(); }
+        });
+      });
+      $count.textContent = `${list.length} produit${list.length>1?'s':''}`;
+    }
+
+    function applyFilters(){
+      const q = state.query;
+      let list = PRODUCTS;
+      if(state.family !== 'all') list = list.filter(p => p.family === state.family);
+      if(state.type   !== 'all') list = list.filter(p => p.type   === state.type);
+      if(q.trim()){
+        // Garder éléments qui matchent tous les tokens avec fautes tolérées
+        list = list.map(p=>({p, ms:matchScore(p.title, q)}))
+                   .filter(x=>x.ms.ok)
+                   .sort((a,b)=> b.ms.score - a.ms.score)
+                   .map(x=>x.p);
+      }
+      renderGallery(list);
+      renderSuggest(q, list);
+    }
+
+    function renderSuggest(q, list){
+      const has = q.trim().length>0 && list.length>0;
+      if(!has){ $suggest.setAttribute('aria-hidden','true'); $suggest.innerHTML=''; return; }
+      const take = list.slice(0,8);
+      $suggest.innerHTML = take.map((p,i)=>`<button role="option" data-id="${p.id}" aria-selected="${i===0}">${p.title}</button>`).join('');
+      $suggest.setAttribute('aria-hidden','false');
+    }
+
+    // Initial render
+    applyFilters();
+
+    // Search + suggestions
+    $q.addEventListener('input', (e)=>{ state.query = e.target.value; applyFilters(); });
+    $suggest.addEventListener('click', (e)=>{
+      const btn = e.target.closest('button[role="option"]'); if(!btn) return;
+      openProduct(Number(btn.dataset.id));
+      $suggest.setAttribute('aria-hidden','true');
+    });
+    $q.addEventListener('keydown', (e)=>{
+      if($suggest.getAttribute('aria-hidden')==='true') return;
+      const opts = Array.from($suggest.querySelectorAll('button[role="option"]'));
+      if(!opts.length) return;
+      const idx = Math.max(0, opts.findIndex(o=>o.getAttribute('aria-selected')==='true'));
+      if(e.key==='ArrowDown'){ e.preventDefault(); const ni=Math.min(opts.length-1, idx+1); opts.forEach(o=>o.setAttribute('aria-selected','false')); opts[ni].setAttribute('aria-selected','true'); opts[ni].scrollIntoView({block:'nearest'}); }
+      if(e.key==='ArrowUp'){ e.preventDefault(); const ni=Math.max(0, idx-1); opts.forEach(o=>o.setAttribute('aria-selected','false')); opts[ni].setAttribute('aria-selected','true'); opts[ni].scrollIntoView({block:'nearest'}); }
+      if(e.key==='Enter'){ e.preventDefault(); const sel = opts.find(o=>o.getAttribute('aria-selected')==='true')||opts[0]; sel?.click(); }
+      if(e.key==='Escape'){ $suggest.setAttribute('aria-hidden','true'); }
+    });
+    $q.addEventListener('blur', ()=> setTimeout(()=> $suggest.setAttribute('aria-hidden','true'), 120));
+
+    // Modal open/close
+    function openProduct(id){
+      const p = PRODUCTS.find(x=>x.id===id); if(!p) return;
+      $sheetTitle.textContent = p.title;
+      $sheetImg.src = p.image; $sheetImg.alt = p.title;
+      $sheetDesc.innerHTML = p.desc;
+      document.body.style.overflow='hidden';
+      $modal.setAttribute('open','');
+    }
+    function closeModal(){ $modal.removeAttribute('open'); document.body.style.overflow=''; }
+    document.getElementById('btnClose').addEventListener('click', closeModal);
+    $modal.addEventListener('click', (e)=>{ if(e.target===$modal) closeModal(); });
+    document.addEventListener('keydown', (e)=>{ if(e.key==='Escape') closeModal(); });
+
+    // Open from gallery
+    $gallery.addEventListener('click', (e)=>{
+      const btn = e.target.closest('.card'); if(!btn) return; openProduct(Number(btn.dataset.id));
+    });
+  </script>
+</body>
+</html>
